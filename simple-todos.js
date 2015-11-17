@@ -1,5 +1,11 @@
 Tasks = new Mongo.Collection("tasks");
 
+if (Meteor.isServer) {
+  Meteor.publish("tasks", function() {
+    return Tasks.find();
+  });
+}
+
 if (Meteor.isClient) {
 //   // counter starts at 0
 //   Session.setDefault('counter', 0);
@@ -22,6 +28,8 @@ if (Meteor.isClient) {
 //   Meteor.startup(function () {
 //     // code to run on server at startup
 //   });  
+  
+  Meteor.subscribe("tasks");
 
   Template.body.helpers({
     tasks: function() {
@@ -45,12 +53,14 @@ if (Meteor.isClient) {
 
       var text = event.target.text.value;
 
-      Tasks.insert({
-        text: text,
-        createdAt: new Date(),
-        owner: Meteor.userId(),
-        username: Meteor.user().username
-      });
+      // Tasks.insert({
+      //   text: text,
+      //   createdAt: new Date(),
+      //   owner: Meteor.userId(),
+      //   username: Meteor.user().username
+      // });
+
+      Meteor.call("addTask", text);
 
       event.target.text.value = "";
     },
@@ -61,12 +71,14 @@ if (Meteor.isClient) {
 
   Template.task.events({
     "click .toggle-checked": function() {
-      Tasks.update(this._id, {
-        $set: { checked: !this.checked }
-      });
+      // Tasks.update(this._id, {
+      //   $set: { checked: !this.checked }
+      // });
+      Meteor.call("setChecked", this._id, !this.checked);
     },
     "click .delete": function() {
-      Tasks.remove(this._id);
+      // Tasks.remove(this._id);
+      Meteor.call("deleteTask", this._id);
     }
   });
 
@@ -74,3 +86,24 @@ if (Meteor.isClient) {
     passwordSignupFields: "USERNAME_ONLY"
   });
 }
+
+Meteor.methods({
+  addTask: function(text) {
+    if(!Meteor.userId()) {
+      throw new Meteor.Error("not-authorized");
+    }
+
+    Tasks.insert({
+      text: text,
+      createdAt: new Date(),
+      owner: Meteor.userId(),
+      username: Meteor.user().username
+    });
+  },
+  deleteTask: function(taskId) {
+    Tasks.remove(taskId);
+  },
+  setChecked: function(taskId, setChecked) {
+    Tasks.update(taskId, { $set: { checked: setChecked } });
+  }
+});
